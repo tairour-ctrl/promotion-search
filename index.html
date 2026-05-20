@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>상품코드 프로모션 조회</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <p class="label">PROMOTION SEARCH</p>
+      <h1>상품코드로 프로모션 조회</h1>
+      <p class="desc">
+        상품코드를 입력하면 CSV 파일에서 해당 데이터를 찾아 프로모션 명을 보여줍니다.
+      </p>
+
+      <div class="search-box">
+        <input
+          type="text"
+          id="productCode"
+          placeholder="상품코드를 입력하세요"
+        />
+        <button id="searchBtn">조회하기</button>
+      </div>
+
+      <div id="result" class="result"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+:root {
+  --bg: #0b1020;
+  --card: #131a2e;
+  --line: rgba(255,255,255,0.08);
+  --text: #f5f7fb;
+  --muted: #a9b1c7;
+  --accent: #77e0c6;
+  --accent2: #8f7cff;
+  --error: #ff8d8d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(143,124,255,0.2), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(119,224,198,0.18), transparent 30%),
+    var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 760px;
+  background: rgba(19, 26, 46, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+
+.label {
+  margin: 0 0 12px;
+  color: var(--accent);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-size: 40px;
+  line-height: 1.1;
+}
+
+.desc {
+  margin: 0 0 24px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.search-box {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.search-box input {
+  flex: 1;
+  min-width: 280px;
+  height: 52px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  padding: 0 16px;
+  font-size: 15px;
+}
+
+.search-box button {
+  height: 52px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 14px;
+  background: var(--text);
+  color: #111;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.result {
+  margin-top: 24px;
+}
+
+.result-card {
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.04);
+  border-radius: 18px;
+  padding: 20px;
+}
+
+.result-item {
+  margin-bottom: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.result-item strong {
+  color: var(--text);
+  display: inline-block;
+  min-width: 110px;
+}
+
+.promo-name {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(143,124,255,0.22), rgba(119,224,198,0.16));
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.promo-name-title {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.promo-name-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.error {
+  color: var(--error);
+  font-size: 15px;
+}
+
+.loading {
+  color: var(--muted);
+  font-size: 15px;
+}
