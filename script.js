@@ -132,7 +132,7 @@ function getProductCode(item) {
 function getRepresentativeCode(item) {
   return (
     item["대표상품코드"] ||
-    item["대표 상품코드"] ||
+    item["대표상품코드"] ||
     item["REPRESENTATIVE CODE"] ||
     ""
   );
@@ -156,7 +156,7 @@ function getTotalPrice(item) {
 function getPromoRepresentativeCode(item) {
   return (
     item["대표상품코드"] ||
-    item["대표 상품코드"] ||
+    item["대표상품코드"] ||
     item["REPRESENTATIVE CODE"] ||
     ""
   );
