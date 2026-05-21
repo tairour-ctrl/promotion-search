@@ -27,16 +27,7 @@ function normalizeCode(value) {
 }
 
 /**
- * 헤더 정규화
- */
-function normalizeHeader(header) {
-  return normalizeText(header)
-    .replace(/\s+/g, "")
-    .toLowerCase();
-}
-
-/**
- * HTML escape
+ * HTML 이스케이프
  */
 function escapeHTML(value) {
   return String(value ?? "")
@@ -48,99 +39,36 @@ function escapeHTML(value) {
 }
 
 /**
- * CSV 파서
- * - 따옴표 내부 쉼표 처리
- * - 개행 처리
+ * 헤더 alias로 값 찾기
  */
-function parseCSV(text) {
-  const rows = [];
-  let row = [];
-  let field = "";
-  let inQuotes = false;
+function getValueByAliases(row, aliases) {
+  const keys = Object.keys(row);
+  const normalizedKeyMap = new Map(
+    keys.map((key) => [normalizeText(key).replace(/\s+/g, "").toLowerCase(), key])
+  );
 
-  const cleaned = String(text ?? "").replace(/^\uFEFF/, "");
+  for (const alias of aliases) {
+    const normalizedAlias = normalizeText(alias)
+      .replace(/\s+/g, "")
+      .toLowerCase();
 
-  for (let i = 0; i < cleaned.length; i++) {
-    const char = cleaned[i];
-    const next = cleaned[i + 1];
-
-    if (char === '"') {
-      if (inQuotes && next === '"') {
-        field += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (char === "," && !inQuotes) {
-      row.push(field);
-      field = "";
-    } else if ((char === "\n" || char === "\r") && !inQuotes) {
-      if (char === "\r" && next === "\n") {
-        i++;
-      }
-
-      row.push(field);
-      field = "";
-
-      if (row.some((cell) => normalizeText(cell) !== "")) {
-        rows.push(row);
-      }
-
-      row = [];
-    } else {
-      field += char;
+    if (normalizedKeyMap.has(normalizedAlias)) {
+      return normalizeText(row[normalizedKeyMap.get(normalizedAlias)]);
     }
   }
 
-  row.push(field);
-
-  if (row.some((cell) => normalizeText(cell) !== "")) {
-    rows.push(row);
-  }
-
-  if (rows.length < 2) return [];
-
-  const rawHeaders = rows[0];
-  const normalizedHeaders = rawHeaders.map(normalizeHeader);
-
-  return rows.slice(1).map((values) => {
-    const item = {};
-
-    normalizedHeaders.forEach((header, index) => {
-      item[header] = normalizeText(values[index] || "");
-    });
-
-    return item;
-  });
-}
-
-/**
- * 키 후보 중 첫 번째로 존재하는 값 반환
- */
-function getValueByAliases(item, aliases) {
-  for (const key of aliases) {
-    const normalizedKey = normalizeHeader(key);
-    if (item[normalizedKey] !== undefined && item[normalizedKey] !== "") {
-      return item[normalizedKey];
-    }
-  }
   return "";
 }
 
 /**
- * 조회용 코드값
- * 현재 CSV는 대표상품코드만 있으므로 그것을 사용.
- * 추후 상품코드 컬럼이 생기면 자동으로 상품코드 우선 사용.
+ * 컬럼값 추출
  */
-function getLookupCode(item) {
+function getProductCode(item) {
   return getValueByAliases(item, [
     "상품코드",
     "상품 코드",
-    "대표상품코드",
-    "대표 상품코드",
-    "product code",
     "productcode",
-    "representativecode"
+    "code"
   ]);
 }
 
@@ -148,16 +76,19 @@ function getPromotionName(item) {
   return getValueByAliases(item, [
     "프로모션명",
     "프로모션 명",
-    "promotion name",
-    "promotionname"
+    "행사명",
+    "행사 명",
+    "promotionname",
+    "promotion"
   ]);
 }
 
 function getStartDate(item) {
   return getValueByAliases(item, [
     "시작일",
+    "시작 일",
+    "적용시작일",
     "프로모션시작일",
-    "start date",
     "startdate"
   ]);
 }
@@ -165,252 +96,121 @@ function getStartDate(item) {
 function getEndDate(item) {
   return getValueByAliases(item, [
     "종료일",
+    "종료 일",
+    "적용종료일",
     "프로모션종료일",
-    "end date",
     "enddate"
   ]);
 }
 
-/**
- * 날짜 문자열 -> Date
- */
-function toDate(dateString) {
-  const raw = normalizeText(dateString);
-  if (!raw) return null;
-
-  const normalized = raw.replace(/[./]/g, "-");
-  const match = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (!match) return null;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-
-  const date = new Date(year, month - 1, day);
-
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month - 1 ||
-    date.getDate() !== day
-  ) {
-    return null;
-  }
-
-  return date;
+function getTotalPrice(item) {
+  return getValueByAliases(item, [
+    "총상품가격",
+    "총 상품가격",
+    "총가격",
+    "판매가격",
+    "price",
+    "totalprice"
+  ]);
 }
 
 /**
- * 오늘 날짜(시분초 제거)
+ * 날짜 파싱
  */
-function getToday() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+function parseDate(value) {
+  const text = normalizeText(value);
+  if (!text) return null;
+
+  const normalized = text.replace(/\./g, "-").replace(/\//g, "-");
+  const date = new Date(normalized);
+
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 /**
- * 날짜 포맷
- */
-function formatDate(dateString) {
-  const date = toDate(dateString);
-  if (!date) {
-    return normalizeText(dateString) || "-";
-  }
-
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}.${m}.${d}`;
-}
-
-/**
- * 유효 프로모션 여부
+ * 오늘 기준 유효한 프로모션인지 체크
  */
 function isValidPromotion(item) {
-  const startDate = toDate(getStartDate(item));
-  const endDate = toDate(getEndDate(item));
-  const today = getToday();
+  const start = parseDate(getStartDate(item));
+  const end = parseDate(getEndDate(item));
+  const today = new Date();
 
-  if (!startDate || !endDate) return false;
-  return today >= startDate && today <= endDate;
+  today.setHours(0, 0, 0, 0);
+
+  if (start && today < start) return false;
+  if (end && today > end) return false;
+
+  return true;
 }
 
 /**
- * 날짜 범위 문자열
+ * CSV 한 줄 파싱
  */
-function buildDateRange(item) {
-  const start = formatDate(getStartDate(item));
-  const end = formatDate(getEndDate(item));
+function splitCSVLine(line) {
+  const result = [];
+  let current = "";
+  let inQuotes = false;
 
-  if (start === "-" && end === "-") {
-    return "-";
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      result.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
   }
 
-  return `${escapeHTML(start)} ~ ${escapeHTML(end)}`;
+  result.push(current);
+  return result;
 }
 
 /**
- * 프로모션명 목록 렌더링
- * 중복 제거하지 않음
+ * CSV 텍스트를 객체 배열로 변환
  */
-function renderPromotionRows(rows) {
-  return rows
-    .map((item, index) => {
-      const promotionName = getPromotionName(item) || "-";
+function parseCSV(text) {
+  const rows = [];
+  let currentLine = "";
+  let inQuotes = false;
 
-      return `
-        <div class="promo-line">
-          <span class="promo-order">${index + 1}.</span>
-          <span class="promo-text">${escapeHTML(promotionName)}</span>
-        </div>
-      `;
-    })
-    .join("");
-}
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
 
-/**
- * 날짜 목록 렌더링
- */
-function renderDateRows(rows) {
-  return rows
-    .map((item, index) => {
-      return `
-        <div class="promo-line">
-          <span class="promo-order">${index + 1}.</span>
-          <span class="promo-text">${buildDateRange(item)}</span>
-        </div>
-      `;
-    })
-    .join("");
-}
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        currentLine += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (currentLine.trim()) rows.push(currentLine);
 
-/**
- * 결과 카드 렌더링
- */
-function renderResultCard({
-  lookupCode,
-  matchCount,
-  promotionHtml,
-  validDateHtml
-}) {
-  return `
-    <div class="result-list">
-      <div class="result-item">
-        <div class="key">입력코드</div>
-        <div class="value">${escapeHTML(lookupCode)}</div>
-      </div>
-      <div class="result-item">
-        <div class="key">조회건수</div>
-        <div class="value">${escapeHTML(String(matchCount))}건</div>
-      </div>
-    </div>
+      currentLine = "";
 
-    <div class="promo-grid">
-      <div class="promo-box">
-        <div class="promo-box-title">PROMOTION NAME</div>
-        <div class="promo-box-value promo-list">
-          ${promotionHtml}
-        </div>
-      </div>
-
-      <div class="promo-box">
-        <div class="promo-box-title">VALID DATE</div>
-        <div class="promo-box-value promo-list">
-          ${validDateHtml}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-/**
- * 메시지 출력
- */
-function showMessage(type, message) {
-  result.innerHTML = `<p class="${type}">${escapeHTML(message)}</p>`;
-}
-
-/**
- * CSV 로드
- */
-async function loadCSV() {
-  try {
-    result.innerHTML = `<p class="guide">CSV 파일을 불러오는 중입니다...</p>`;
-
-    const response = await fetch(CSV_FILE);
-
-    if (!response.ok) {
-      throw new Error(`master_promotion.csv 로드 실패: ${response.status}`);
+      if (char === "\r" && next === "\n") {
+        i += 1;
+      }
+    } else {
+      currentLine += char;
     }
-
-    const csvText = await response.text();
-    promotionDB = parseCSV(csvText);
-
-    if (!promotionDB.length) {
-      throw new Error("프로모션 데이터가 비어 있습니다.");
-    }
-
-    result.innerHTML = `<p class="guide">CSV 로드 완료. 상품코드를 입력해 조회하세요.</p>`;
-  } catch (error) {
-    console.error("CSV 로드 오류:", error);
-    showMessage("error", `데이터 로드 중 오류가 발생했습니다. ${error.message}`);
   }
-}
 
-/**
- * 조회 실행
- */
-function searchPromotion() {
-  try {
-    const inputCode = normalizeCode(input.value);
+  if (currentLine.trim()) rows.push(currentLine);
 
-    if (!inputCode) {
-      showMessage("error", "상품코드를 입력해주세요.");
-      return;
-    }
+  if (!rows.length) return [];
 
-    if (!promotionDB.length) {
-      showMessage("error", "프로모션 데이터가 아직 로드되지 않았습니다.");
-      return;
-    }
+  const headers = splitCSVLine(rows[0]).map((header) => normalizeText(header));
 
-    let matchedRows = promotionDB.filter((item) => {
-      return normalizeCode(getLookupCode(item)) === inputCode;
-    });
-
-    if (SHOW_ONLY_VALID_PROMOTIONS) {
-      matchedRows = matchedRows.filter(isValidPromotion);
-    }
-
-    if (!matchedRows.length) {
-      const noResultMessage = SHOW_ONLY_VALID_PROMOTIONS
-        ? "해당 코드에 현재 적용 중인 프로모션이 없습니다."
-        : "해당 코드에 연결된 프로모션이 없습니다.";
-
-      showMessage("guide", noResultMessage);
-      return;
-    }
-
-    const promotionHtml = renderPromotionRows(matchedRows);
-    const validDateHtml = renderDateRows(matchedRows);
-
-    result.innerHTML = renderResultCard({
-      lookupCode: inputCode,
-      matchCount: matchedRows.length,
-      promotionHtml,
-      validDateHtml
-    });
-  } catch (error) {
-    console.error("조회 오류:", error);
-    showMessage("error", `조회 중 오류가 발생했습니다. ${error.message}`);
-  }
-}
-
-button.addEventListener("click", searchPromotion);
-
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    searchPromotion();
-  }
-});
-
-loadCSV();
+  return rows.slice(1).map((rowLine) => {
+    const
