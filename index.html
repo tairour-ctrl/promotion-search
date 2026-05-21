@@ -3,34 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>상품코드 프로모션 조회</title>
-  <link rel="stylesheet" href="./style.css?v=4" />
+  <title>상품 프로모션 조회</title>
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <p class="label">PROMOTION SEARCH</p>
-      <h1>상품코드로 프로모션 조회</h1>
-      <p class="desc">
-        상품코드를 입력하면 적용되는 프로모션 명을 보여줍니다.
-      </p>
+  <div class="container">
+    <h1>상품 프로모션 조회</h1>
 
-      <div class="search-box">
-        <input
-          type="text"
-          id="productCode"
-          placeholder="상품코드를 입력하세요"
-          autocomplete="off"
-        />
-        <button id="searchBtn" type="button">조회하기</button>
-      </div>
+    <div class="search-box">
+      <input
+        type="text"
+        id="productCode"
+        placeholder="상품코드를 입력하세요"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button id="searchBtn" type="button">조회</button>
+    </div>
 
-      <div id="result">
-        <p class="guide">조회할 상품코드를 입력해 주세요.</p>
-      </div>
+    <div id="result">
+      <p class="guide">조회할 상품코드를 입력해 주세요.</p>
     </div>
   </div>
 
-  <script src="./script.js?v=4"></script>
+  <script src="./script.js"></script>
 </body>
 </html>
