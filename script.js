@@ -128,11 +128,9 @@ function getValueByAliases(item, aliases) {
 }
 
 /**
- * 현재 CSV 기준 조회용 코드값
- * 현재 파일에는 상품코드 컬럼이 없고 대표상품코드만 있으므로
- * 대표상품코드도 fallback으로 사용.
- *
- * 나중에 CSV에 상품코드 컬럼이 추가되면 자동으로 상품코드 우선 조회됨.
+ * 조회용 코드값
+ * 현재 CSV는 대표상품코드만 있으므로 그것을 사용.
+ * 추후 상품코드 컬럼이 생기면 자동으로 상품코드 우선 사용.
  */
 function getLookupCode(item) {
   return getValueByAliases(item, [
@@ -175,10 +173,6 @@ function getEndDate(item) {
 
 /**
  * 날짜 문자열 -> Date
- * 지원:
- * - 2026-05-01
- * - 2026/05/01
- * - 2026.05.01
  */
 function toDate(dateString) {
   const raw = normalizeText(dateString);
@@ -214,7 +208,7 @@ function getToday() {
 }
 
 /**
- * 날짜 표시용 포맷
+ * 날짜 포맷
  */
 function formatDate(dateString) {
   const date = toDate(dateString);
@@ -229,7 +223,7 @@ function formatDate(dateString) {
 }
 
 /**
- * 오늘 기준 유효 프로모션 여부
+ * 유효 프로모션 여부
  */
 function isValidPromotion(item) {
   const startDate = toDate(getStartDate(item));
@@ -255,8 +249,8 @@ function buildDateRange(item) {
 }
 
 /**
- * 프로모션명 렌더링
- * 중복 제거 없이 전부 표시
+ * 프로모션명 목록 렌더링
+ * 중복 제거하지 않음
  */
 function renderPromotionRows(rows) {
   return rows
@@ -274,14 +268,15 @@ function renderPromotionRows(rows) {
 }
 
 /**
- * 날짜 렌더링
+ * 날짜 목록 렌더링
  */
 function renderDateRows(rows) {
   return rows
-    .map((item) => {
+    .map((item, index) => {
       return `
         <div class="promo-line">
-          ${buildDateRange(item)}
+          <span class="promo-order">${index + 1}.</span>
+          <span class="promo-text">${buildDateRange(item)}</span>
         </div>
       `;
     })
