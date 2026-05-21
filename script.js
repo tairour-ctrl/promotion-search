@@ -1,3 +1,5 @@
+console.log("script loaded");
+alert("script loaded");
 const input = document.getElementById("productCode");
 const button = document.getElementById("searchBtn");
 const result = document.getElementById("result");
