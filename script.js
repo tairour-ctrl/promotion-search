@@ -286,7 +286,7 @@ function parsePriority(value) {
 
 /**
  * 중복 제거
- * 같은 프로모션명 + 같은 시작일 + 같은 종료일 + 같은 대표상품코드
+ * 같은 대표상품코드 + 같은 프로모션명 + 같은 시작일 + 같은 종료일
  */
 function removeDuplicatePromotions(promotions) {
   const seen = new Set();
@@ -313,7 +313,8 @@ function removeDuplicatePromotions(promotions) {
  */
 function sortPromotions(promotions) {
   return [...promotions].sort((a, b) => {
-    const priorityDiff = parsePriority(getPriority(a)) - parsePriority(getPriority(b));
+    const priorityDiff =
+      parsePriority(getPriority(a)) - parsePriority(getPriority(b));
     if (priorityDiff !== 0) return priorityDiff;
 
     const aStart = toDate(getStartDate(a));
@@ -337,7 +338,9 @@ function sortPromotions(promotions) {
 function renderPromotionList(promotions) {
   const nameHtml = promotions
     .map((promo) => {
-      return `<div class="promo-line">${escapeHTML(getPromotionName(promo) || "-")}</div>`;
+      return `<div class="promo-line">${escapeHTML(
+        getPromotionName(promo) || "-"
+      )}</div>`;
     })
     .join("");
 
@@ -364,25 +367,35 @@ function renderResultCard({
 }) {
   return `
     <div class="result-card">
-      <div class="result-row">
-        <div class="label">대표상품코드</div>
-        <div class="value">${escapeHTML(representativeCode)}</div>
+      <div class="result-list">
+        <div class="result-item">
+          <div class="key">대표상품코드</div>
+          <div class="value">${escapeHTML(representativeCode)}</div>
+        </div>
+        <div class="result-item">
+          <div class="key">상품코드</div>
+          <div class="value">${escapeHTML(productCode)}</div>
+        </div>
+        <div class="result-item">
+          <div class="key">총상품가격</div>
+          <div class="value">${totalPrice}</div>
+        </div>
       </div>
-      <div class="result-row">
-        <div class="label">상품코드</div>
-        <div class="value">${escapeHTML(productCode)}</div>
-      </div>
-      <div class="result-row">
-        <div class="label">총상품가격</div>
-        <div class="value">${totalPrice}</div>
-      </div>
-      <div class="result-row promotion-row">
-        <div class="label">프로모션명</div>
-        <div class="value promotion-list">${promotionHtml}</div>
-      </div>
-      <div class="result-row promotion-row">
-        <div class="label">유효기간</div>
-        <div class="value promotion-list">${validDateHtml}</div>
+
+      <div class="promo-grid">
+        <div class="promo-box">
+          <div class="promo-box-title">PROMOTION NAME</div>
+          <div class="promo-box-value promo-list">
+            ${promotionHtml}
+          </div>
+        </div>
+
+        <div class="promo-box">
+          <div class="promo-box-title">VALID DATE</div>
+          <div class="promo-box-value promo-list">
+            ${validDateHtml}
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -460,7 +473,10 @@ function searchPromotion() {
     });
 
     if (!product) {
-      showMessage("error", "입력한 상품코드에 해당하는 상품 정보를 찾을 수 없습니다.");
+      showMessage(
+        "error",
+        "입력한 상품코드에 해당하는 상품 정보를 찾을 수 없습니다."
+      );
       return;
     }
 
@@ -474,13 +490,14 @@ function searchPromotion() {
     }
 
     const matchedPromotions = promotionDB.filter((promo) => {
-      return normalizeCode(getPromoRepresentativeCode(promo)) === normalizeCode(representativeCode);
+      return (
+        normalizeCode(getPromoRepresentativeCode(promo)) ===
+        normalizeCode(representativeCode)
+      );
     });
 
     const validPromotions = sortPromotions(
-      removeDuplicatePromotions(
-        matchedPromotions.filter(isValidPromotion)
-      )
+      removeDuplicatePromotions(matchedPromotions.filter(isValidPromotion))
     );
 
     let promotionHtml = `<div class="promo-line">현재 유효한 프로모션 없음</div>`;
