@@ -7,7 +7,6 @@ let promotionDB = [];
 
 /**
  * 단순 CSV 파서
- * 주의: 값 안에 쉼표가 들어가는 복잡한 CSV는 별도 보완 필요
  */
 function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
@@ -32,17 +31,15 @@ function parseCSV(text) {
  */
 async function loadCSVs() {
   try {
-    const [productRes, promoRes] = await Promise.all([
-      fetch("./product_master_map.csv"),
-      fetch("./master_promotion.csv")
-    ]);
+    const productRes = await fetch("./product_master_map.csv");
+    const promoRes = await fetch("./master_promotion.csv");
 
     if (!productRes.ok) {
-      throw new Error("product_master_map.csv 로드 실패");
+      throw new Error(`product_master_map.csv 로드 실패: ${productRes.status}`);
     }
 
     if (!promoRes.ok) {
-      throw new Error("master_promotion.csv 로드 실패");
+      throw new Error(`master_promotion.csv 로드 실패: ${promoRes.status}`);
     }
 
     const productText = await productRes.text();
@@ -51,23 +48,23 @@ async function loadCSVs() {
     productMapDB = parseCSV(productText);
     promotionDB = parseCSV(promoText);
 
-    console.log("상품-마스터 데이터:", productMapDB);
+    console.log("상품 데이터:", productMapDB);
     console.log("프로모션 데이터:", promotionDB);
 
     result.innerHTML = `<p class="guide">조회할 상품코드를 입력해 주세요.</p>`;
   } catch (error) {
-    console.error(error);
+    console.error("CSV 로드 오류:", error);
     result.innerHTML = `
       <p class="error">
         CSV 파일을 불러오지 못했습니다.<br>
-        파일 경로와 파일명을 확인해주세요.
+        ${error.message}
       </p>
     `;
   }
 }
 
 /**
- * 날짜를 YYYY-MM-DD 기준으로 안전하게 비교하기 위한 Date 생성
+ * 날짜 변환
  */
 function toDate(dateString) {
   if (!dateString) return null;
@@ -75,7 +72,7 @@ function toDate(dateString) {
 }
 
 /**
- * 오늘 날짜 구하기
+ * 오늘 날짜
  */
 function getToday() {
   const now = new Date();
@@ -108,8 +105,7 @@ function isValidPromotion(promo) {
 }
 
 /**
- * 우선순위 오름차순 정렬
- * 우선순위가 없으면 큰 숫자로 처리
+ * 우선순위 정렬
  */
 function sortByPriority(a, b) {
   const priorityA = Number(a["우선순위"] || 9999);
@@ -119,8 +115,56 @@ function sortByPriority(a, b) {
 }
 
 /**
+ * 상품코드 가져오기
+ */
+function getProductCode(item) {
+  return (
+    item["상품코드"] ||
+    item["상품 코드"] ||
+    item["PRODUCT CODE"] ||
+    ""
+  );
+}
+
+/**
+ * 대표상품코드 가져오기
+ */
+function getRepresentativeCode(item) {
+  return (
+    item["대표상품코드"] ||
+    item["대표 상품코드"] ||
+    item["REPRESENTATIVE CODE"] ||
+    ""
+  );
+}
+
+/**
+ * 총상품가격 가져오기
+ */
+function getTotalPrice(item) {
+  return (
+    item["총상품가격"] ||
+    item["총 상품가격"] ||
+    item["판매가"] ||
+    ""
+  );
+}
+
+/**
+ * 프로모션 파일의 대표상품코드 가져오기
+ */
+function getPromoRepresentativeCode(item) {
+  return (
+    item["대표상품코드"] ||
+    item["대표 상품코드"] ||
+    item["REPRESENTATIVE CODE"] ||
+    ""
+  );
+}
+
+/**
  * 프로모션 조회
- * 상품코드 -> 마스터코드 -> 유효 프로모션 필터 -> 우선순위 1건 선택
+ * 상품코드 -> 대표상품코드 -> 오늘 유효한 프로모션 조회
  */
 function searchPromotion() {
   const inputCode = input.value.trim().toUpperCase();
@@ -132,7 +176,7 @@ function searchPromotion() {
 
   // 1) 상품코드로 상품 정보 찾기
   const product = productMapDB.find((item) => {
-    return (item["상품코드"] || "").trim().toUpperCase() === inputCode;
+    return getProductCode(item).trim().toUpperCase() === inputCode;
   });
 
   if (!product) {
@@ -144,57 +188,23 @@ function searchPromotion() {
     return;
   }
 
-  const masterCode = product["마스터코드"] || "";
-  const displayMasterCode = product["대표상품코드"] || masterCode || "-";
-  const productCode = product["상품코드"] || "-";
-  const totalPrice = formatPrice(product["총상품가격"] || "-");
+  const representativeCode = getRepresentativeCode(product);
+  const productCode = getProductCode(product) || "-";
+  const totalPrice = formatPrice(getTotalPrice(product) || "-");
 
-  if (!masterCode) {
+  if (!representativeCode) {
     result.innerHTML = `
       <p class="error">
-        해당 상품코드에 연결된 마스터코드가 없습니다.
+        해당 상품코드에 연결된 대표상품코드가 없습니다.
       </p>
     `;
     return;
   }
 
-  // 2) 마스터코드로 연결된 프로모션 전체 찾기
+  // 2) 대표상품코드로 연결된 프로모션 전체 찾기
   const matchedPromotions = promotionDB.filter((promo) => {
-    return (promo["마스터코드"] || "").trim() === masterCode.trim();
+    return getPromoRepresentativeCode(promo).trim() === representativeCode.trim();
   });
-
-  if (matchedPromotions.length === 0) {
-    result.innerHTML = `
-      <div class="result-card">
-        <div class="result-list">
-          <div class="result-item">
-            <div class="key">대표상품코드</div>
-            <div class="value">${displayMasterCode}</div>
-          </div>
-          <div class="result-item">
-            <div class="key">상품코드</div>
-            <div class="value">${productCode}</div>
-          </div>
-          <div class="result-item">
-            <div class="key">총상품가격</div>
-            <div class="value">${totalPrice}</div>
-          </div>
-        </div>
-
-        <div class="promo-grid">
-          <div class="promo-box">
-            <div class="promo-box-title">PROMOTION NAME</div>
-            <div class="promo-box-value">현재 유효한 프로모션 없음</div>
-          </div>
-          <div class="promo-box">
-            <div class="promo-box-title">VALID DATE</div>
-            <div class="promo-box-value">-</div>
-          </div>
-        </div>
-      </div>
-    `;
-    return;
-  }
 
   // 3) 오늘 기준 유효한 프로모션만 필터
   const validPromotions = matchedPromotions.filter(isValidPromotion);
@@ -205,7 +215,7 @@ function searchPromotion() {
         <div class="result-list">
           <div class="result-item">
             <div class="key">대표상품코드</div>
-            <div class="value">${displayMasterCode}</div>
+            <div class="value">${representativeCode}</div>
           </div>
           <div class="result-item">
             <div class="key">상품코드</div>
@@ -232,20 +242,20 @@ function searchPromotion() {
     return;
   }
 
-  // 4) 여러 개면 우선순위 가장 높은 것 1개 선택
+  // 4) 여러 개면 우선순위 높은 것 1개 선택
   validPromotions.sort(sortByPriority);
   const selectedPromotion = validPromotions[0];
 
   const promotionName = selectedPromotion["프로모션명"] || "-";
   const validDate = `${selectedPromotion["시작일"] || "-"} ~ ${selectedPromotion["종료일"] || "-"}`;
 
-  // 5) 화면 출력
+  // 5) 출력
   result.innerHTML = `
     <div class="result-card">
       <div class="result-list">
         <div class="result-item">
           <div class="key">대표상품코드</div>
-          <div class="value">${displayMasterCode}</div>
+          <div class="value">${representativeCode}</div>
         </div>
         <div class="result-item">
           <div class="key">상품코드</div>
