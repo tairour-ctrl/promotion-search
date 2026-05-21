@@ -6,11 +6,11 @@ let productMapDB = [];
 let promotionDB = [];
 
 /**
- * 단순 CSV 파서
- * 주의: 값 안에 쉼표가 들어가는 복잡한 CSV는 별도 보완 필요
+ * 단순 CSV 파서 + BOM 제거
  */
 function parseCSV(text) {
-  const lines = text.trim().split(/\r?\n/);
+  const cleanedText = text.replace(/^\uFEFF/, "");
+  const lines = cleanedText.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
 
   const headers = lines[0].split(",").map((h) => h.trim());
@@ -49,9 +49,6 @@ async function loadCSVs() {
     productMapDB = parseCSV(productText);
     promotionDB = parseCSV(promoText);
 
-    console.log("상품 데이터:", productMapDB);
-    console.log("프로모션 데이터:", promotionDB);
-
     result.innerHTML = `<p class="guide">조회할 상품코드를 입력해 주세요.</p>`;
   } catch (error) {
     console.error("CSV 로드 오류:", error);
@@ -64,25 +61,16 @@ async function loadCSVs() {
   }
 }
 
-/**
- * 날짜 변환
- */
 function toDate(dateString) {
   if (!dateString) return null;
   return new Date(dateString + "T00:00:00");
 }
 
-/**
- * 오늘 날짜
- */
 function getToday() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-/**
- * 가격 포맷
- */
 function formatPrice(value) {
   if (!value) return "-";
 
@@ -92,41 +80,11 @@ function formatPrice(value) {
   return `${Number(numeric).toLocaleString("ko-KR")}원`;
 }
 
-/**
- * 날짜 표시 포맷
- * 2026-05-01 -> 2026.05.01
- */
 function formatDate(dateString) {
   if (!dateString) return "-";
   return dateString.replaceAll("-", ".");
 }
 
-/**
- * 오늘 기준 유효한 프로모션인지 체크
- */
-function isValidPromotion(promo) {
-  const startDate = toDate(getStartDate(promo));
-  const endDate = toDate(getEndDate(promo));
-  const today = getToday();
-
-  if (!startDate || !endDate) return false;
-
-  return today >= startDate && today <= endDate;
-}
-
-/**
- * 우선순위 정렬
- */
-function sortByPriority(a, b) {
-  const priorityA = Number(getPriority(a) || 9999);
-  const priorityB = Number(getPriority(b) || 9999);
-
-  return priorityA - priorityB;
-}
-
-/**
- * 상품코드 가져오기
- */
 function getProductCode(item) {
   return (
     item["상품코드"] ||
@@ -137,9 +95,6 @@ function getProductCode(item) {
   );
 }
 
-/**
- * 대표상품코드 가져오기
- */
 function getRepresentativeCode(item) {
   return (
     item["대표상품코드"] ||
@@ -150,9 +105,6 @@ function getRepresentativeCode(item) {
   );
 }
 
-/**
- * 총상품가격 가져오기
- */
 function getTotalPrice(item) {
   return (
     item["총상품가격"] ||
@@ -164,9 +116,6 @@ function getTotalPrice(item) {
   );
 }
 
-/**
- * 프로모션 파일의 대표상품코드 가져오기
- */
 function getPromoRepresentativeCode(item) {
   return (
     item["대표상품코드"] ||
@@ -177,9 +126,6 @@ function getPromoRepresentativeCode(item) {
   );
 }
 
-/**
- * 프로모션명 가져오기
- */
 function getPromotionName(item) {
   return (
     item["프로모션명"] ||
@@ -193,9 +139,6 @@ function getPromotionName(item) {
   );
 }
 
-/**
- * 시작일 가져오기
- */
 function getStartDate(item) {
   return (
     item["시작일"] ||
@@ -206,9 +149,6 @@ function getStartDate(item) {
   );
 }
 
-/**
- * 종료일 가져오기
- */
 function getEndDate(item) {
   return (
     item["종료일"] ||
@@ -219,22 +159,56 @@ function getEndDate(item) {
   );
 }
 
-/**
- * 우선순위 가져오기
- */
-function getPriority(item) {
-  return (
-    item["우선순위"] ||
-    item["PRIORITY"] ||
-    item["priority"] ||
-    ""
-  );
+function isValidPromotion(promo) {
+  const startDate = toDate(getStartDate(promo));
+  const endDate = toDate(getEndDate(promo));
+  const today = getToday();
+
+  if (!startDate || !endDate) return false;
+
+  return today >= startDate && today <= endDate;
 }
 
 /**
- * 결과 카드 렌더링
+ * 중복 제거
+ * 같은 프로모션명 + 같은 시작일 + 같은 종료일이면 1개로 처리
  */
-function renderResultCard({ representativeCode, productCode, totalPrice, promotionName, validDate }) {
+function removeDuplicatePromotions(promotions) {
+  const seen = new Set();
+
+  return promotions.filter((promo) => {
+    const key = [
+      getPromotionName(promo),
+      getStartDate(promo),
+      getEndDate(promo)
+    ].join("||");
+
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/**
+ * 여러 프로모션 HTML 렌더링
+ */
+function renderPromotionList(promotions) {
+  const nameHtml = promotions
+    .map((promo) => `<div class="promo-line">${getPromotionName(promo)}</div>`)
+    .join("");
+
+  const dateHtml = promotions
+    .map((promo) => {
+      const start = formatDate(getStartDate(promo));
+      const end = formatDate(getEndDate(promo));
+      return `<div class="promo-line">${start} ~ ${end}</div>`;
+    })
+    .join("");
+
+  return { nameHtml, dateHtml };
+}
+
+function renderResultCard({ representativeCode, productCode, totalPrice, promotionHtml, validDateHtml }) {
   result.innerHTML = `
     <div class="result-card">
       <div class="result-list">
@@ -255,11 +229,15 @@ function renderResultCard({ representativeCode, productCode, totalPrice, promoti
       <div class="promo-grid">
         <div class="promo-box">
           <div class="promo-box-title">PROMOTION NAME</div>
-          <div class="promo-box-value">${promotionName}</div>
+          <div class="promo-box-value promo-list">
+            ${promotionHtml}
+          </div>
         </div>
         <div class="promo-box">
           <div class="promo-box-title">VALID DATE</div>
-          <div class="promo-box-value">${validDate}</div>
+          <div class="promo-box-value promo-list">
+            ${validDateHtml}
+          </div>
         </div>
       </div>
     </div>
@@ -267,8 +245,8 @@ function renderResultCard({ representativeCode, productCode, totalPrice, promoti
 }
 
 /**
- * 프로모션 조회
- * 상품코드 -> 대표상품코드 -> 오늘 유효한 프로모션 조회
+ * 조회
+ * 상품코드 -> 대표상품코드 -> 오늘 유효한 프로모션 전부 표시
  */
 function searchPromotion() {
   const inputCode = input.value.trim().toUpperCase();
@@ -278,7 +256,6 @@ function searchPromotion() {
     return;
   }
 
-  // 1) 상품코드로 상품 정보 찾기
   const product = productMapDB.find((item) => {
     return getProductCode(item).trim().toUpperCase() === inputCode;
   });
@@ -305,4 +282,42 @@ function searchPromotion() {
     return;
   }
 
-  // 2) 대표상품코드로 연결된 프로모션 전체 찾기
+  const matchedPromotions = promotionDB.filter((promo) => {
+    return getPromoRepresentativeCode(promo).trim() === representativeCode.trim();
+  });
+
+  const validPromotions = removeDuplicatePromotions(
+    matchedPromotions.filter(isValidPromotion)
+  );
+
+  if (validPromotions.length === 0) {
+    renderResultCard({
+      representativeCode,
+      productCode,
+      totalPrice,
+      promotionHtml: `<div class="promo-line">현재 유효한 프로모션 없음</div>`,
+      validDateHtml: `<div class="promo-line">-</div>`
+    });
+    return;
+  }
+
+  const { nameHtml, dateHtml } = renderPromotionList(validPromotions);
+
+  renderResultCard({
+    representativeCode,
+    productCode,
+    totalPrice,
+    promotionHtml: nameHtml,
+    validDateHtml: dateHtml
+  });
+}
+
+button.addEventListener("click", searchPromotion);
+
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    searchPromotion();
+  }
+});
+
+loadCSVs();
