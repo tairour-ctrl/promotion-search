@@ -21,8 +21,6 @@ function normalizeCode(value) {
 
 /**
  * 헤더 정규화
- * - 공백/탭 제거
- * - 소문자화
  */
 function normalizeHeader(header) {
   return normalizeText(header)
@@ -366,35 +364,33 @@ function renderResultCard({
   validDateHtml
 }) {
   return `
-    <div class="result-card">
-      <div class="result-list">
-        <div class="result-item">
-          <div class="key">대표상품코드</div>
-          <div class="value">${escapeHTML(representativeCode)}</div>
-        </div>
-        <div class="result-item">
-          <div class="key">상품코드</div>
-          <div class="value">${escapeHTML(productCode)}</div>
-        </div>
-        <div class="result-item">
-          <div class="key">총상품가격</div>
-          <div class="value">${totalPrice}</div>
+    <div class="result-list">
+      <div class="result-item">
+        <div class="key">대표상품코드</div>
+        <div class="value">${escapeHTML(representativeCode)}</div>
+      </div>
+      <div class="result-item">
+        <div class="key">상품코드</div>
+        <div class="value">${escapeHTML(productCode)}</div>
+      </div>
+      <div class="result-item">
+        <div class="key">총상품가격</div>
+        <div class="value">${totalPrice}</div>
+      </div>
+    </div>
+
+    <div class="promo-grid">
+      <div class="promo-box">
+        <div class="promo-box-title">PROMOTION NAME</div>
+        <div class="promo-box-value promo-list">
+          ${promotionHtml}
         </div>
       </div>
 
-      <div class="promo-grid">
-        <div class="promo-box">
-          <div class="promo-box-title">PROMOTION NAME</div>
-          <div class="promo-box-value promo-list">
-            ${promotionHtml}
-          </div>
-        </div>
-
-        <div class="promo-box">
-          <div class="promo-box-title">VALID DATE</div>
-          <div class="promo-box-value promo-list">
-            ${validDateHtml}
-          </div>
+      <div class="promo-box">
+        <div class="promo-box-title">VALID DATE</div>
+        <div class="promo-box-value promo-list">
+          ${validDateHtml}
         </div>
       </div>
     </div>
@@ -413,7 +409,7 @@ function showMessage(type, message) {
  */
 async function loadCSVs() {
   try {
-    showMessage("guide", "데이터를 불러오는 중입니다...");
+    result.innerHTML = `<p class="guide">CSV 파일을 불러오는 중입니다...</p>`;
 
     const [productRes, promoRes] = await Promise.all([
       fetch("./product_master_map.csv"),
@@ -440,11 +436,7 @@ async function loadCSVs() {
       throw new Error("상품 마스터 데이터가 비어 있습니다.");
     }
 
-    if (!promotionDB.length) {
-      console.warn("프로모션 데이터가 비어 있습니다.");
-    }
-
-    showMessage("guide", "조회할 상품코드를 입력해 주세요.");
+    result.innerHTML = `<p class="guide">CSV 로드 완료. 상품코드를 입력해 조회하세요.</p>`;
   } catch (error) {
     console.error("CSV 로드 오류:", error);
     showMessage("error", `데이터 로드 중 오류가 발생했습니다. ${error.message}`);
@@ -500,8 +492,8 @@ function searchPromotion() {
       removeDuplicatePromotions(matchedPromotions.filter(isValidPromotion))
     );
 
-    let promotionHtml = `<div class="promo-line">현재 유효한 프로모션 없음</div>`;
-    let validDateHtml = `<div class="promo-line">-</div>`;
+    let promotionHtml = `<div class="promo-line empty-line">현재 유효한 프로모션 없음</div>`;
+    let validDateHtml = `<div class="promo-line empty-line">-</div>`;
 
     if (validPromotions.length > 0) {
       const rendered = renderPromotionList(validPromotions);
