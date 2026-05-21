@@ -295,13 +295,23 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       result.innerHTML = `<p class="guide">CSV 파일을 불러오는 중입니다...</p>`;
 
-      const response = await fetch(CSV_FILE);
+      let csvText = "";
 
-      if (!response.ok) {
-        throw new Error(`master_promotion.csv 로드 실패: ${response.status}`);
+      // 1) 우선 window.PROMOTION_CSV (master_promotion.js로 임베드된 데이터) 사용
+      //    → file:// 로 index.html을 열어도 동작
+      if (typeof window.PROMOTION_CSV === "string" && window.PROMOTION_CSV.length) {
+        csvText = window.PROMOTION_CSV;
+        console.log("CSV from embedded window.PROMOTION_CSV");
+      } else {
+        // 2) fallback: fetch (http(s):// 환경)
+        const response = await fetch(CSV_FILE);
+        if (!response.ok) {
+          throw new Error(`master_promotion.csv 로드 실패: ${response.status}`);
+        }
+        csvText = await response.text();
+        console.log("CSV from fetch");
       }
 
-      const csvText = await response.text();
       promotionDB = parseCSV(csvText);
 
       if (!promotionDB.length) {
@@ -309,10 +319,14 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       result.innerHTML = `<p class="guide">CSV 로드 완료. 상품코드를 입력해 조회하세요.</p>`;
-      console.log("CSV loaded:", promotionDB);
+      console.log("CSV loaded:", promotionDB.length, "rows");
     } catch (error) {
       console.error("CSV 로드 오류:", error);
-      showMessage("error", `데이터 로드 중 오류가 발생했습니다. ${error.message}`);
+      showMessage(
+        "error",
+        `데이터 로드 중 오류가 발생했습니다. ${error.message} ` +
+        `(file:// 로 열었다면 master_promotion.js 파일이 같은 폴더에 있는지 확인하세요)`
+      );
     }
   }
 
